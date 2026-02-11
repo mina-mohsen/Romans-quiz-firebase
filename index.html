@@ -44,6 +44,7 @@
             border-radius: 20px; 
             box-shadow: 0 10px 25px rgba(0,0,0,0.15); 
             position: relative;
+            overflow: hidden;
         }
         
         header { 
@@ -55,6 +56,21 @@
             top: -16px; 
             background: var(--white); 
             z-index: 100; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .logo-small {
+            position: absolute;
+            left: 10px;
+            top: 10px;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--light);
+            display: none;
         }
 
         h1 { font-size: 1.3rem; margin: 10px 0; color: var(--primary); }
@@ -72,6 +88,20 @@
         
         .screen { display: none; flex-direction: column; gap: 15px; }
         .active-screen { display: flex; }
+
+        .main-logo-container {
+            text-align: center;
+            padding: 20px 0;
+        }
+
+        .main-logo {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            object-fit: cover;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border: 4px solid var(--light);
+        }
 
         input { 
             padding: 12px; 
@@ -138,11 +168,11 @@
         .nav-dot.answered { background: var(--success); color: white; }
         .nav-dot.skipped { background: var(--skipped); color: white; }
 
-        .btn-admin-link { position: absolute; top: 5px; left: 5px; background: none; border: none; color: #ccc; font-size: 0.7rem; }
+        .btn-admin-link { position: absolute; top: 5px; right: 5px; background: none; border: none; color: #ccc; font-size: 0.7rem; }
 
         /* Review Styles */
         .review-container { margin-top: 20px; border-top: 2px solid #eee; padding-top: 20px; }
-        .review-card { padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #eee; font-size: 0.9rem; }
+        .review-card { padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #eee; font-size: 0.9rem; text-align: right; }
         .review-card.correct-card { border-right: 5px solid var(--success); background: #f0f9f4; }
         .review-card.wrong-card { border-right: 5px solid var(--danger); background: #fdf2f2; }
         .ref-tag { color: var(--accent); font-weight: bold; font-size: 0.85rem; display: block; margin-top: 5px; }
@@ -152,12 +182,17 @@
 
 <div class="container">
     <button class="btn-admin-link" onclick="showAdminLogin()">Admin</button>
+    <img src="https://imgur.com/hH7HWvE.jpeg" class="logo-small" id="mini-logo" alt="logo">
+    
     <header>
         <h1>مسابقة سفر رومية</h1>
         <div id="timer-box" style="display:none;">20:00</div>
     </header>
 
     <div id="reg-screen" class="screen active-screen">
+        <div class="main-logo-container">
+            <img src="https://imgur.com/hH7HWvE.jpeg" class="main-logo" alt="Meeting Logo">
+        </div>
         <div style="text-align: center; color: var(--danger); font-weight: bold; padding: 12px; background: #fff8f0; border-radius: 10px; border: 1px dashed var(--danger); font-size: 0.9rem;">
             تنبيه: الاختبار متاح لمرة واحدة فقط.
         </div>
@@ -248,7 +283,7 @@
         { q: "إن كان الله معنا، فمن هو...؟", options: ["من ينصرنا", "من علينا", "من يتركنا", "من يحبنا"], correct: 1, ref: "8:31" },
         { q: "من سيفصلنا عن محبة المسيح العظيمة؟", options: ["الشدائد فقط", "لا أحد ابدا", "الخطايا فقط", "الموت فقط"], correct: 1, ref: "8:35" },
         { q: "لمن هي التبني والمجد والعهود والاشتراع؟", options: ["للمصريين", "للرومانيين", "للاسرائيليين", "لليونانيين"], correct: 2, ref: "9:4" },
-        { q: "ليس لمن يشاء ولا لمن يسعى، بل لله الذي...؟", options: ["يعطي بكثرة", "يرحم الجميع", "يغفر الذنوب", "يعمل بقوة"], correct: 1, ref: "9:16" },
+        { q: "ليس لمن يشاء ولا لمن يسعى، بل لله الذي...? ", options: ["يعطي بكثرة", "يرحم الجميع", "يغفر الذنوب", "يعمل بقوة"], correct: 1, ref: "9:16" },
         { q: "من هو غاية الناموس للبر لكل مؤمن؟", options: ["موسى النبي", "المسيح الرب", "بولس الرسول", "داود الملك"], correct: 1, ref: "10:4" },
         { q: "بماذا يكون الإيمان حسب الرسالة؟", options: ["بالنظر فقط", "بالسمع فقط", "باللمس فقط", "بالخبر فقط"], correct: 1, ref: "10:17" },
         { q: "هل رفض الله شعبه؟", options: ["نعم رفضهم", "حاشا لم يرفض", "في الماضي", "للوقت الحالي"], correct: 1, ref: "11:1" },
@@ -285,6 +320,7 @@
             await auth.signInAnonymously();
             switchScreen('quiz-screen');
             document.getElementById('timer-box').style.display = 'inline-block';
+            document.getElementById('mini-logo').style.display = 'block';
             initQuiz();
             startTimer();
         } catch(e) { alert("Error: " + e.message); }
@@ -298,7 +334,7 @@
             const div = document.createElement('div');
             div.className = `screen ${i===0?'active-screen':''}`;
             div.id = `q-cnt-${i}`;
-            div.innerHTML = `<div style="font-weight:bold; margin-bottom:15px;">${i+1}. ${q.q}</div>${q.options.map((opt, idx) => `<div class="option-item" id="opt-${i}-${idx}" onclick="select(${i}, ${idx})">${opt}</div>`).join('')}`;
+            div.innerHTML = `<div style="font-weight:bold; margin-bottom:15px; text-align:right;">${i+1}. ${q.q}</div>${q.options.map((opt, idx) => `<div class="option-item" style="text-align:right;" id="opt-${i}-${idx}" onclick="select(${i}, ${idx})">${opt}</div>`).join('')}`;
             wrapper.appendChild(div);
             const dot = document.createElement('div');
             dot.className = `nav-dot ${i===0?'current':''}`;
@@ -365,6 +401,7 @@
             });
             localStorage.setItem(ATTEMPT_KEY, "true");
             switchScreen('results-screen');
+            document.getElementById('mini-logo').style.display = 'none';
             document.getElementById('final-score').innerText = `${score}/60`;
             document.getElementById('timer-box').style.display = 'none';
             generateReview();
@@ -407,7 +444,7 @@
             const snap = await db.collection("artifacts").doc(appId).collection("public").doc("data").collection("results").get();
             let data = []; snap.forEach(d => data.push(d.data()));
             data.sort((a,b) => b.score - a.score);
-            let h = `<table style="width:100%; border-collapse:collapse; font-size:0.8rem;"><tr style="background:#eee;"><th>الاسم</th><th>الدرجة</th></tr>`;
+            let h = `<table style="width:100%; border-collapse:collapse; font-size:0.8rem; direction:rtl;"><tr style="background:#eee;"><th>الاسم</th><th>الدرجة</th></tr>`;
             data.forEach(r => h += `<tr style="border-bottom:1px solid #ddd; text-align:center;"><td>${r.name}</td><td>${r.score}</td></tr>`);
             content.innerHTML = h + "</table>";
         } catch(e) { content.innerHTML = "Error loading."; }
