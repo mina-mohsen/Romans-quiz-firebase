@@ -4,534 +4,329 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>مسابقة رسالة كورنثوس الأولى - الأصحاح الأول</title>
+    
     <!-- Firebase SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/11.0.2/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/11.0.2/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore-compat.js"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+        import { getFirestore, collection, doc, addDoc, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+
+        // Global state
+        let db, auth, user;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'corinthians-quiz-1';
+        
+        // Initialize Firebase
+        try {
+            const firebaseConfig = JSON.parse(__firebase_config);
+            const app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+
+            // Auth Logic (Rule 3)
+            const initAuth = async () => {
+                try {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                } catch (e) {
+                    console.error("Auth failed:", e);
+                }
+            };
+            
+            initAuth();
+            onAuthStateChanged(auth, (u) => {
+                user = u;
+                const btn = document.getElementById('start-btn');
+                if(btn) {
+                    btn.disabled = false;
+                    btn.innerText = "بدء الاختبار";
+                }
+            });
+        } catch (e) {
+            console.error("Firebase Init Error:", e);
+        }
+
+        // Questions Data
+        const questions = [
+            { q: "من هو الشخص الذي شارك بولس الرسول في إرسال التحية لكورنثوس؟", options: ["تيموثاوس", "سوسثانيس", "لوقا", "سيلا"], correct: 1, ref: "1:1" },
+            { q: "بماذا دُعي بولس في بداية الرسالة؟", options: ["رسولاً مختاراً", "رسولاً مدعواً", "خادماً لله", "تلميذاً للمسيح"], correct: 1, ref: "1:1" },
+            { q: "بأي صفة وُصف المؤمنون في كورنثوس؟", options: ["المقدسين في المسيح يسوع", "الأبرار بالنعمة", "حفظة الناموس", "رعية الله"], correct: 0, ref: "1:2" },
+            { q: "ما هي البركة التي يطلبها بولس في التحية؟", options: ["إيمان ورجاء", "نعمة وسلام", "قوة وثبات", "محبة وفرح"], correct: 1, ref: "1:3" },
+            { q: "لماذا يشكر بولس إلهه دائماً من جهتهم؟", options: ["لأجل صبرهم", "لأجل نعمة الله المعطاة لهم", "لأجل كثرة عددهم", "لأجل صومهم"], correct: 1, ref: "1:4" },
+            { q: "في أي شيء استغنى أهل كورنثوس في المسيح؟", options: ["في كل كلمة وكل علم", "في الأموال المادية", "في القوة العسكرية", "في الفلسفة اليونانية"], correct: 0, ref: "1:5" },
+            { q: "ماذا تأيد بينهم حسب قول بولس الرسول؟", options: ["ناموس موسى", "شهادة المسيح", "تعاليم الفلاسفة", "أقوال الأنبياء"], correct: 1, ref: "1:6" },
+            { q: "بولس يقول أنهم غير ناقصين في أي...؟", options: ["موهبة", "كلمة", "عمل", "فكر"], correct: 0, ref: "1:7" },
+            { q: "ماذا ينتظر المؤمنون في كورنثوس؟", options: ["نهاية العالم", "استعلان ربنا يسوع المسيح", "زيارة بولس", "الموت"], correct: 1, ref: "1:7" },
+            { q: "من هو الذي سيثبتهم إلى النهاية بلا لوم؟", options: ["بولس الرسول", "يسوع المسيح", "سوسثانيس", "الأسقف"], correct: 1, ref: "1:8" },
+            { q: "الله أمين الذي به دُعيتم إلى... ابنه؟", options: ["خدمة", "شركة", "تمجيد", "رؤية"], correct: 1, ref: "1:9" },
+            { q: "بأي اسم يناشدهم بولس أن يتكلموا جميعاً قولا واحداً؟", options: ["اسم الله الآب", "اسم ربنا يسوع المسيح", "اسم الروح القدس", "اسمه هو الشخصي"], correct: 1, ref: "1:10" },
+            { q: "ماذا طلب بولس ألا يكون بينهم؟", options: ["خطايا", "انشقاقات", "نقاشات", "صلوات"], correct: 1, ref: "1:10" },
+            { q: "من هم الذين أخبروا بولس عن وجود خصومات في كورنثوس؟", options: ["أهل أفسس", "أهل خلوي", "أهل روما", "أهل غلاطية"], correct: 1, ref: "1:11" },
+            { q: "ماذا كان يقول البعض في كورنثوس عن تبعيتهم؟", options: ["أنا لبولس", "أنا لأبلوس", "أنا لصفا", "كل ما سبق"], correct: 3, ref: "1:12" },
+            { q: "من المقصود بـ 'صفا' في الرسالة؟", options: ["بولس", "بطرس", "لوقا", "برنابا"], correct: 1, ref: "1:12" },
+            { q: "ما هو السؤال الاستنكاري الذي سأله بولس؟", options: ["هل المسيح غائب؟", "هل انقسم المسيح؟", "هل تألم المسيح؟", "هل قام المسيح؟"], correct: 1, ref: "1:13" },
+            { q: "هل صُلب بولس لأجل أهل كورنثوس؟", options: ["نعم", "كلا", "ربما", "لم يذكر"], correct: 1, ref: "1:13" },
+            { q: "باسم من اعتمد أهل كورنثوس؟", options: ["اسم بولس", "اسم أبلوس", "اسم الرب يسوع", "اسم سوسثانيس"], correct: 2, ref: "1:13" },
+            { q: "من هم الأشخاص الذين ذكر بولس أنه عمدهم بنفسه؟", options: ["كريسبس وغايس", "سوسثانيس ولوقا", "بطرس وأندراوس", "مريم ومرثا"], correct: 0, ref: "1:14" },
+            { q: "أي بيت قام بولس بتعميده أيضاً؟", options: ["بيت ليديا", "بيت استفاناس", "بيت كيرنيليوس", "بيت فيلبس"], correct: 1, ref: "1:16" },
+            { q: "لماذا أرسل المسيح بولس حسب قوله؟", options: ["ليعمد فقط", "ليبشر", "ليحاكم", "ليجمع أموالاً"], correct: 1, ref: "1:17" },
+            { q: "بشر بولس الإنجيل بغير... لئلا يتعطل صليب المسيح؟", options: ["حكمة كلام", "مال كثير", "خوف", "تردد"], correct: 0, ref: "1:17" },
+            { q: "كلمة الصليب عند الهالكين هي...؟", options: ["قوة", "جهالة", "فلسفة", "حزن"], correct: 1, ref: "1:18" },
+            { q: "كلمة الصليب عندنا نحن المخلصين هي...؟", options: ["حكمة بشرية", "قوة الله", "ضعف إنساني", "خرافة"], correct: 1, ref: "1:18" },
+            { q: "ماذا سيفعل الله بحكمة الحكماء حسب المكتوب؟", options: ["يبيدها", "يمجدها", "يجمعها", "ينشرها"], correct: 0, ref: "1:19" },
+            { q: "أين الحكيم؟ أين الكاتب؟ أين... هذا الدهر؟", options: ["مباحث", "فيلسوف", "ملك", "غني"], correct: 0, ref: "1:20" },
+            { q: "ألم يجهل الله... هذا العالم؟", options: ["قوة", "حكمة", "جمال", "فنون"], correct: 1, ref: "1:20" },
+            { q: "بواسطة ماذا سُرّ الله أن يخلص المؤمنين؟", options: ["جهالة الكرازة", "حكمة المنطق", "المعجزات الكبرى", "المال والجاه"], correct: 0, ref: "1:21" },
+            { q: "ماذا يطلب اليهود؟", options: ["حكمة", "آية", "مالاً", "سلطة"], correct: 1, ref: "1:22" },
+            { q: "ماذا يطلب اليونانيون؟", options: ["آيات", "حكمة", "أساطير", "أوثان"], correct: 1, ref: "1:22" },
+            { q: "نحن نكرز بـ...؟", options: ["المسيح مصلوباً", "المسيح ملكاً أرضياً", "المسيح فيلسوفاً", "المسيح غنياً"], correct: 0, ref: "1:23" },
+            { q: "المسيح المصلوب لليهود هو...؟", options: ["قوة", "عثرة", "حكمة", "فرح"], correct: 1, ref: "1:23" },
+            { q: "المسيح المصلوب لليونانيين هو...؟", options: ["جهالة", "منطق", "حقيقة", "سر"], correct: 0, ref: "1:23" },
+            { q: "المسيح هو قوة الله و... الله للمدعوين؟", options: ["مجد", "حكمة", "رحمة", "خوف"], correct: 1, ref: "1:24" },
+            { q: "جهالة الله أحكم من...؟", options: ["الناس", "الملائكة", "الشياطين", "الفلاسفة"], correct: 0, ref: "1:25" },
+            { q: "ضعف الله أقوى من...؟", options: ["الناس", "الحديد", "الموت", "المرض"], correct: 0, ref: "1:25" },
+            { q: "انظروا دعوتكم، ليس كثيرون... حسب الجسد؟", options: ["أقوياء", "حكماء", "أغنياء", "ملوك"], correct: 1, ref: "1:26" },
+            { q: "ليس كثيرون... ليس كثيرون شرفاء؟", options: ["علماء", "مقتدرين", "فقراء", "مساكين"], correct: 1, ref: "1:26" },
+            { q: "اختار الله جهال العالم ليخزي...؟", options: ["الأشرار", "الحكماء", "الضعفاء", "الأغنياء"], correct: 1, ref: "1:27" },
+            { q: "اختار الله ضعفاء العالم ليخزي...؟", options: ["الأقوياء", "المرضى", "الفلاسفة", "المتكبرين"], correct: 0, ref: "1:27" },
+            { q: "اختار الله أدنياء العالم و...؟", options: ["المزدرى وغير الموجود", "المعروف والمشهور", "الأغنياء والملوك", "الحكماء والعلماء"], correct: 0, ref: "1:28" },
+            { q: "لماذا اختار الله هذه الأمور الضعيفة؟", options: ["لكي يبطل الموجود", "لكي يجمع المال", "لكي يحارب الرومان", "لكي يمدح الفقر"], correct: 0, ref: "1:28" },
+            { q: "لكي لا يفتخر كل ذي جسد...؟", options: ["أمام الناس", "أمام الله", "أمام نفسه", "أمام الشياطين"], correct: 1, ref: "1:29" },
+            { q: "منه أنتم بالمسيح يسوع الذي صار لنا... من الله؟", options: ["حكمة وبراً", "قوة وغنى", "صحة وعافية", "علماً ومنطقاً"], correct: 0, ref: "1:30" },
+            { q: "ماذا صار لنا المسيح أيضاً؟", options: ["قداسة وفداء", "مالاً وجاهاً", "خوفاً ورهبة", "حزناً وألماً"], correct: 0, ref: "1:30" },
+            { q: "من افتخر فليفتخر بـ...؟", options: ["بعلمه", "بالرب", "بأعماله", "بنسبه"], correct: 1, ref: "1:31" },
+            { q: "كم عدد آيات الأصحاح الأول؟", options: ["20 آية", "31 آية", "25 آية", "40 آية"], correct: 1, ref: "الأصحاح 1" },
+            { q: "من هو كاتب هذه الرسالة؟", options: ["بطرس الرسول", "بولس الرسول", "يوحنا الرسول", "يعقوب الرسول"], correct: 1, ref: "1:1" },
+            { q: "لمن وُجهت الرسالة؟", options: ["كنيسة روما", "كنيسة كورنثوس", "كنيسة أفسس", "كنيسة غلاطية"], correct: 1, ref: "1:2" },
+            { q: "ما هي العبارة المتكررة في الأصحاح؟", options: ["حكمة الناس", "قوة الله", "بالمسيح يسوع", "بفعل الناموس"], correct: 2, ref: "1:1-31" },
+            { q: "بأي شيء أراد بولس معالجة الانقسامات؟", options: ["بالقوة", "باسم ربنا يسوع المسيح", "بالمال", "بالتهديد"], correct: 1, ref: "1:10" },
+            { q: "هل اعتمد بولس عدداً كبيراً في كورنثوس؟", options: ["نعم الجميع", "لا أحد", "عدد قليل ذكره بالاسم", "لم يذكر"], correct: 2, ref: "1:14-16" },
+            { q: "ما هو المركز الأساسي للأصحاح؟", options: ["الختان", "صليب المسيح وحكمته", "جمع الصدقات", "رحلات بولس"], correct: 1, ref: "1:18" },
+            { q: "أين كُتب 'سأبيد حكمة الحكماء'؟", options: ["في الإنجيل", "في العهد القديم", "في الرسالة لروما", "في رؤيا يوحنا"], correct: 1, ref: "1:19" },
+            { q: "لماذا لم تدرك الحكمة البشرية الله؟", options: ["لأن الله أخفى نفسه", "لأن العالم لم يعرف الله بحكمته", "لأن الفلسفة صعبة", "لأن الكتب ضاعت"], correct: 1, ref: "1:21" },
+            { q: "ماذا يمثل صليب المسيح للمؤمنين؟", options: ["فشلاً", "قوة الله وحكمته", "مجرد ذكرى", "حكماً بالموت"], correct: 1, ref: "1:24" },
+            { q: "ماذا قصد بولس بـ 'المزدري وغير الموجود'؟", options: ["الأوثان", "الأمم", "الأباطرة", "الفلاسفة"], correct: 1, ref: "1:28" },
+            { q: "كيف نال المؤمنون البر والقداسة؟", options: ["بأعمالهم", "بالمسيح يسوع", "بحفظ السبت", "بدراسة الفلسفة"], correct: 1, ref: "1:30" },
+            { q: "ما الهدف النهائي من اختيار الله للضعفاء؟", options: ["إهانة الناس", "أن لا يفتخر بشر أمامه", "تغيير الحكم", "نشر الفقر"], correct: 1, ref: "1:29" }
+        ];
+
+        let current = 0, answers = new Array(questions.length).fill(null), timeLeft = 20 * 60, timer;
+        const lockKey = "corinth_lock_1";
+
+        window.startQuiz = async () => {
+            if (!user) {
+                alert("جاري الاتصال بالخادم... حاول مرة أخرى خلال ثوانٍ.");
+                return;
+            }
+
+            const name = document.getElementById('u-name').value.trim();
+            const phone = document.getElementById('u-phone').value.trim();
+            const address = document.getElementById('u-address').value.trim();
+            const bday = document.getElementById('u-birthdate').value;
+
+            if(!name || !phone || !address || !bday) {
+                alert("برجاء إدخال كافة البيانات.");
+                return;
+            }
+
+            if(localStorage.getItem(lockKey)) {
+                alert("لقد شاركت في هذا الاختبار مسبقاً.");
+                return;
+            }
+
+            switchScreen('quiz-screen');
+            document.getElementById('timer-box').style.display = 'inline-block';
+            initQuiz();
+            startTimer();
+        };
+
+        function initQuiz() {
+            const wrapper = document.getElementById('q-wrapper');
+            const grid = document.getElementById('nav-grid');
+            wrapper.innerHTML = ""; grid.innerHTML = "";
+            questions.forEach((q, i) => {
+                const div = document.createElement('div');
+                div.className = `screen ${i===0?'active-screen':''}`;
+                div.id = `q-cnt-${i}`;
+                div.innerHTML = `<div class="q-text">${i+1}. ${q.q}</div>${q.options.map((opt, idx) => `<div class="option-item" id="opt-${i}-${idx}" onclick="selectOption(${i}, ${idx})">${opt}</div>`).join('')}`;
+                wrapper.appendChild(div);
+                const dot = document.createElement('div');
+                dot.className = `nav-dot ${i===0?'current':''}`;
+                dot.id = `dot-${i}`; dot.innerText = i+1; dot.onclick = () => jump(i);
+                grid.appendChild(dot);
+            });
+        }
+
+        window.selectOption = (qIdx, optIdx) => {
+            answers[qIdx] = optIdx;
+            document.querySelectorAll(`#q-cnt-${qIdx} .option-item`).forEach((el, idx) => el.classList.toggle('selected', idx === optIdx));
+            document.getElementById(`dot-${qIdx}`).classList.add('answered');
+            setTimeout(() => nav(1), 250);
+        };
+
+        window.jump = (n) => {
+            document.querySelectorAll('#q-wrapper .screen').forEach(c => c.classList.remove('active-screen'));
+            document.querySelectorAll('.nav-dot').forEach(d => d.classList.remove('current'));
+            current = n;
+            document.getElementById(`q-cnt-${current}`).classList.add('active-screen');
+            document.getElementById(`dot-${current}`).classList.add('current');
+            document.getElementById('finish-btn').style.display = (current === questions.length - 1) ? 'block' : 'none';
+        };
+
+        window.nav = (step) => { let t = current + step; if(t >= 0 && t < questions.length) jump(t); };
+
+        function startTimer() {
+            timer = setInterval(() => {
+                timeLeft--;
+                if(timeLeft <= 0) finishQuiz(true);
+                const m = Math.floor(timeLeft/60), s = timeLeft%60;
+                document.getElementById('timer-box').innerText = `${m}:${s<10?'0':''}${s}`;
+            }, 1000);
+        }
+
+        window.finishQuiz = async (auto = false) => {
+            if(!auto && !confirm("هل أنت متأكد من إنهاء الاختبار وإرسال النتيجة؟")) return;
+            
+            clearInterval(timer);
+            let score = 0;
+            questions.forEach((q, i) => { if(answers[i] === q.correct) score++; });
+
+            try {
+                // Rule 1: Correct path
+                const resultsCol = collection(db, "artifacts", appId, "public", "data", "results");
+                await addDoc(resultsCol, {
+                    name: document.getElementById('u-name').value,
+                    phone: document.getElementById('u-phone').value,
+                    score: score,
+                    uid: user.uid,
+                    timestamp: serverTimestamp()
+                });
+
+                localStorage.setItem(lockKey, "done");
+                switchScreen('results-screen');
+                document.getElementById('final-score').innerText = `${score}/60`;
+                document.getElementById('timer-box').style.display = 'none';
+                generateReview();
+            } catch (e) {
+                console.error("Save error:", e);
+                alert("حدث خطأ أثناء حفظ النتيجة.");
+            }
+        };
+
+        function generateReview() {
+            const list = document.getElementById('review-list');
+            list.innerHTML = questions.map((q, i) => `
+                <div class="review-card ${answers[i] === q.correct ? 'correct-card' : 'wrong-card'}">
+                    <b>${i+1}. ${q.q}</b><br>
+                    <span>إجابتك: ${answers[i] !== null ? q.options[answers[i]] : 'لا يوجد'}</span><br>
+                    ${answers[i] !== q.correct ? `<span style="color:green">الصح: ${q.options[q.correct]}</span><br>` : ''}
+                    <small style="color:darkorange">المرجع: 1 كو ${q.ref}</small>
+                </div>
+            `).join('');
+        }
+
+        window.showReview = () => document.getElementById('review-list').style.display = 'block';
+
+        window.showAdmin = async () => {
+            if(prompt("كلمة السر:") === "24724") {
+                switchScreen('admin-screen');
+                const content = document.getElementById('admin-content');
+                try {
+                    const resultsCol = collection(db, "artifacts", appId, "public", "data", "results");
+                    const snap = await getDocs(resultsCol);
+                    let data = [];
+                    snap.forEach(doc => data.push(doc.data()));
+                    data.sort((a,b) => b.score - a.score);
+                    
+                    content.innerHTML = `<table><tr><th>الاسم</th><th>الدرجة</th><th>الموبايل</th></tr>
+                        ${data.map(r => `<tr><td>${r.name}</td><td>${r.score}</td><td>${r.phone}</td></tr>`).join('')}
+                    </table>`;
+                } catch(e) { content.innerText = "خطأ في التحميل."; }
+            }
+        };
+
+        function switchScreen(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active-screen'));
+            document.getElementById(id).classList.add('active-screen');
+        }
+    </script>
+
     <style>
-        :root {
-            --primary: #2c3e50;
-            --secondary: #34495e;
-            --accent: #d35400;
-            --success: #27ae60;
-            --danger: #c0392b;
-            --light: #f4f7f6;
-            --white: #ffffff;
-            --skipped: #f39c12;
-        }
-
-        * { 
-            box-sizing: border-box; 
-            -webkit-tap-highlight-color: transparent; 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-        }
-
-        body { 
-            background-color: #bdc3c7; 
-            margin: 0; 
-            padding: 10px; 
-            display: flex; 
-            justify-content: center; 
-            align-items: flex-start;
-            min-height: 100vh; 
-        }
-
-        .container { 
-            width: 100%; 
-            max-width: 600px; 
-            background: var(--white); 
-            padding: 15px; 
-            border-radius: 20px; 
-            box-shadow: 0 10px 25px rgba(0,0,0,0.15); 
-            position: relative;
-            overflow: hidden;
-        }
-        
-        header { 
-            text-align: center; 
-            border-bottom: 2px solid var(--light); 
-            padding-bottom: 10px; 
-            margin-bottom: 15px; 
-            position: sticky; 
-            top: -16px; 
-            background: var(--white); 
-            z-index: 100; 
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .logo-small {
-            position: absolute;
-            left: 10px;
-            top: 10px;
-            width: 45px;
-            height: 45px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 2px solid var(--light);
-            display: none;
-        }
-
-        h1 { font-size: 1.3rem; margin: 10px 0; color: var(--primary); }
-
-        #timer-box { 
-            background: #fdedec; 
-            color: var(--danger); 
-            padding: 5px 15px; 
-            border-radius: 50px; 
-            font-weight: 800; 
-            font-size: 1.1rem; 
-            display: inline-block; 
-            border: 2px solid var(--danger); 
-        }
-        
+        :root { --p: #2c3e50; --s: #34495e; --acc: #d35400; --win: #27ae60; --err: #c0392b; }
+        * { box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background: #ecf0f1; margin: 0; padding: 15px; display: flex; justify-content: center; }
+        .container { width: 100%; max-width: 500px; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        header { text-align: center; border-bottom: 2px solid #eee; margin-bottom: 20px; }
+        #timer-box { color: var(--err); font-weight: bold; font-size: 1.2rem; display: none; margin-bottom: 10px; }
         .screen { display: none; flex-direction: column; gap: 15px; }
         .active-screen { display: flex; }
-
-        .main-logo-container {
-            text-align: center;
-            padding: 20px 0;
-        }
-
-        .main-logo {
-            width: 150px;
-            height: 150px;
-            border-radius: 50%;
-            object-fit: cover;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            border: 4px solid var(--light);
-        }
-
-        input { 
-            padding: 12px; 
-            border: 2px solid #ddd; 
-            border-radius: 12px; 
-            font-size: 1rem; 
-            width: 100%; 
-        }
-
-        label {
-            font-size: 0.9rem;
-            font-weight: bold;
-            color: var(--secondary);
-            margin-bottom: -10px;
-            margin-right: 5px;
-        }
-
-        .btn-main { 
-            background: var(--primary); 
-            color: white; 
-            padding: 14px; 
-            border: none; 
-            border-radius: 12px; 
-            font-size: 1rem; 
-            font-weight: bold; 
-            cursor: pointer; 
-            transition: transform 0.1s;
-            touch-action: manipulation;
-        }
-        .btn-main:active { transform: scale(0.97); }
-
-        .btn-skip {
-            background: #ecf0f1;
-            color: var(--secondary);
-            border: 1px solid #bdc3c7;
-        }
-
-        .option-item { 
-            background: #f8f9f9; 
-            padding: 14px; 
-            border-radius: 12px; 
-            cursor: pointer; 
-            border: 2px solid #ebedef; 
-            margin-bottom: 8px; 
-            font-size: 0.95rem;
-        }
-        .option-item.selected { 
-            background: #ebf5fb; 
-            border-color: var(--primary); 
-            font-weight: bold; 
-        }
-
-        .nav-grid { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fill, minmax(35px, 1fr)); 
-            gap: 6px; 
-            margin-top: 20px; 
-            padding-top: 15px; 
-            border-top: 2px solid #eee; 
-        }
-        .nav-dot { 
-            aspect-ratio: 1; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            background: #eee; 
-            border-radius: 8px; 
-            font-size: 0.8rem; 
-            cursor: pointer; 
-        }
-        .nav-dot.current { background: var(--primary); color: white; border: 2px solid #34495e; }
-        .nav-dot.answered { background: var(--success); color: white; }
-        .nav-dot.skipped { background: var(--skipped); color: white; }
-
-        .btn-admin-link { position: absolute; top: 5px; right: 5px; background: none; border: none; color: #ccc; font-size: 0.7rem; }
-
-        .review-container { margin-top: 20px; border-top: 2px solid #eee; padding-top: 20px; }
-        .review-card { padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #eee; font-size: 0.9rem; text-align: right; }
-        .review-card.correct-card { border-right: 5px solid var(--success); background: #f0f9f4; }
-        .review-card.wrong-card { border-right: 5px solid var(--danger); background: #fdf2f2; }
-        .ref-tag { color: var(--accent); font-weight: bold; font-size: 0.85rem; display: block; margin-top: 5px; }
-
-        table { border-spacing: 0; width: 100%; }
-        th, td { padding: 10px; border: 1px solid #eee; text-align: center; }
+        input { padding: 12px; border: 1px solid #ddd; border-radius: 8px; width: 100%; font-size: 1rem; }
+        .btn-main { background: var(--p); color: white; padding: 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .btn-main:disabled { background: #ccc; cursor: not-allowed; }
+        .q-text { font-weight: bold; margin-bottom: 10px; font-size: 1.1rem; }
+        .option-item { background: #f9f9f9; padding: 12px; border: 1px solid #eee; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+        .option-item.selected { background: #d1ecf1; border-color: #0c5460; font-weight: bold; }
+        .nav-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 5px; margin-top: 15px; }
+        .nav-dot { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; background: #eee; border-radius: 4px; font-size: 0.7rem; cursor: pointer; }
+        .nav-dot.current { border: 2px solid var(--p); }
+        .nav-dot.answered { background: var(--win); color: white; }
+        .review-card { padding: 10px; border-radius: 8px; margin-bottom: 10px; font-size: 0.9rem; }
+        .correct-card { border-right: 5px solid var(--win); background: #f0fff4; }
+        .wrong-card { border-right: 5px solid var(--err); background: #fff5f5; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #eee; padding: 8px; text-align: center; font-size: 0.8rem; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <button class="btn-admin-link" onclick="showAdminLogin()">Admin</button>
-    <img src="https://imgur.com/hH7HWvE.jpeg" class="logo-small" id="mini-logo" alt="logo">
-    
     <header>
-        <h1>مسابقة رسالة كورنثوس الأولى (الأصحاح 1)</h1>
-        <div id="timer-box" style="display:none;">20:00</div>
+        <div id="timer-box">20:00</div>
+        <h2 onclick="showAdmin()">مسابقة 1 كورنثوس 1</h2>
     </header>
 
+    <!-- Registration -->
     <div id="reg-screen" class="screen active-screen">
-        <div class="main-logo-container">
-            <img src="https://imgur.com/hH7HWvE.jpeg" class="main-logo" alt="Meeting Logo">
+        <div style="text-align: center; padding: 10px;">
+            <img src="https://imgur.com/hH7HWvE.jpeg" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover;">
         </div>
-        <div style="text-align: center; color: var(--danger); font-weight: bold; padding: 12px; background: #fff8f0; border-radius: 10px; border: 1px dashed var(--danger); font-size: 0.9rem;">
-            تنبيه: الاختبار متاح لمرة واحدة فقط ويشمل الأصحاح الأول.
-        </div>
-        
-        <input type="text" id="u-name" placeholder="الاسم بالكامل">
+        <input type="text" id="u-name" placeholder="الاسم الرباعي">
         <input type="tel" id="u-phone" placeholder="رقم الموبايل">
-        <input type="text" id="u-address" placeholder="العنوان:الامارة / المنطقة">
-        
-        <label for="u-birthdate">تاريخ الميلاد:</label>
+        <input type="text" id="u-address" placeholder="العنوان بالتفصيل">
         <input type="date" id="u-birthdate">
-        
-        <button class="btn-main" onclick="startQuiz()">بدء الاختبار</button>
+        <button id="start-btn" class="btn-main" onclick="startQuiz()" disabled>جاري التحميل...</button>
     </div>
 
+    <!-- Quiz -->
     <div id="quiz-screen" class="screen">
         <div id="q-wrapper"></div>
-        
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-            <button class="btn-main" style="background:#95a5a6;" onclick="nav(-1)">السابق</button>
+            <button class="btn-main" style="background:#7f8c8d" onclick="nav(-1)">السابق</button>
             <button class="btn-main" onclick="nav(1)">التالي</button>
         </div>
-        
-        <button class="btn-main btn-skip" id="skip-btn" onclick="skipCurrent()">تأجيل السؤال (لاحقاً)</button>
-        
-        <button id="finish-btn" class="btn-main" style="background:var(--success); display: none; margin-top: 5px;" onclick="finish()">إنهاء وإرسال النتيجة</button>
-        
+        <button id="finish-btn" class="btn-main" style="background:var(--win); display:none;" onclick="finishQuiz()">إنهاء وإرسال النتيجة</button>
         <div class="nav-grid" id="nav-grid"></div>
     </div>
 
+    <!-- Results -->
     <div id="results-screen" class="screen">
-        <div style="text-align:center; padding: 20px 0;">
-            <h2 style="color: var(--success);">تم التسجيل بنجاح!</h2>
-            <div id="final-score" style="font-size: 3.5rem; font-weight: bold; color: var(--primary);">0/60</div>
-            <p>شكراً لمشاركتك.</p>
-            <button class="btn-main" style="width: auto; padding: 10px 30px;" onclick="showReview()">مراجعة الإجابات والتعلم</button>
+        <div style="text-align: center;">
+            <h1 id="final-score" style="color:var(--win); font-size: 3rem;">0/60</h1>
+            <p>تم حفظ نتيجتك بنجاح.</p>
+            <button class="btn-main" onclick="showReview()">مراجعة الإجابات</button>
         </div>
-        <div id="review-list" class="review-container" style="display:none;"></div>
+        <div id="review-list" style="display: none; margin-top: 20px;"></div>
     </div>
 
+    <!-- Admin -->
     <div id="admin-screen" class="screen">
-        <h2 style="text-align: center;">لوحة تحكم النتائج</h2>
-        <div id="admin-content" style="overflow-x:auto;">جاري التحميل...</div>
+        <h3>النتائج</h3>
+        <div id="admin-content"></div>
         <button class="btn-main" onclick="location.reload()">خروج</button>
     </div>
 </div>
 
-<script>
-    // Initialize Firebase
-    let db, auth;
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'corinthians-quiz-1';
-    const ATTEMPT_KEY = "corinthians_lock_v1";
-
-    try {
-        const firebaseConfig = JSON.parse(__firebase_config);
-        firebase.initializeApp(firebaseConfig);
-        db = firebase.firestore();
-        auth = firebase.auth();
-    } catch (e) {
-        console.error("Firebase Init Error:", e);
-    }
-
-    const questions = [
-        { q: "من هو الشخص الذي شارك بولس الرسول في إرسال التحية لغلاطية وكورنثوس؟", options: ["تيموثاوس", "سوسثانيس", "لوقا", "سيلا"], correct: 1, ref: "1:1" },
-        { q: "بماذا دُعي بولس في بداية الرسالة؟", options: ["رسولاً مختاراً", "رسولاً مدعواً", "خادماً لله", "تلميذاً للمسيح"], correct: 1, ref: "1:1" },
-        { q: "بأي صفة وُصف المؤمنون في كورنثوس؟", options: ["المقدسين في المسيح يسوع", "الأبرار بالنعمة", "حفظة الناموس", "رعية الله"], correct: 0, ref: "1:2" },
-        { q: "ما هي البركة التي يطلبها بولس في التحية؟", options: ["إيمان ورجاء", "نعمة وسلام", "قوة وثبات", "محبة وفرح"], correct: 1, ref: "1:3" },
-        { q: "لماذا يشكر بولس إلهه دائماً من جهتهم؟", options: ["لأجل صبرهم", "لأجل نعمة الله المعطاة لهم", "لأجل كثرة عددهم", "لأجل صومهم"], correct: 1, ref: "1:4" },
-        { q: "في أي شيء استغنى أهل كورنثوس في المسيح؟", options: ["في كل كلمة وكل علم", "في الأموال المادية", "في القوة العسكرية", "في الفلسفة اليونانية"], correct: 0, ref: "1:5" },
-        { q: "ماذا تأيد بينهم حسب قول بولس الرسول؟", options: ["ناموس موسى", "شهادة المسيح", "تعاليم الفلاسفة", "أقوال الأنبياء"], correct: 1, ref: "1:6" },
-        { q: "بولس يقول أنهم غير ناقصين في أي...؟", options: ["موهبة", "كلمة", "عمل", "فكر"], correct: 0, ref: "1:7" },
-        { q: "ماذا ينتظر المؤمنون في كورنثوس؟", options: ["نهاية العالم", "استعلان ربنا يسوع المسيح", "زيارة بولس", "الموت"], correct: 1, ref: "1:7" },
-        { q: "من هو الذي سيثبتهم إلى النهاية بلا لوم؟", options: ["بولس الرسول", "يسوع المسيح", "سوسثانيس", "الأسقف"], correct: 1, ref: "1:8" },
-        { q: "الله أمين الذي به دُعيتم إلى... ابنه؟", options: ["خدمة", "شركة", "تمجيد", "رؤية"], correct: 1, ref: "1:9" },
-        { q: "بأي اسم يناشدهم بولس أن يتكلموا جميعاً قولا واحداً؟", options: ["اسم الله الآب", "اسم ربنا يسوع المسيح", "اسم الروح القدس", "اسمه هو الشخصي"], correct: 1, ref: "1:10" },
-        { q: "ماذا طلب بولس ألا يكون بينهم؟", options: ["خطايا", "انشقاقات", "نقاشات", "صلوات"], correct: 1, ref: "1:10" },
-        { q: "من هم الذين أخبروا بولس عن وجود خصومات في كورنثوس؟", options: ["أهل أفسس", "أهل خلوي", "أهل روما", "أهل غلاطية"], correct: 1, ref: "1:11" },
-        { q: "ماذا كان يقول البعض في كورنثوس عن تبعيتهم؟", options: ["أنا لبولس", "أنا لأبلوس", "أنا لصفا", "كل ما سبق"], correct: 3, ref: "1:12" },
-        { q: "من المقصود بـ 'صفا' في الرسالة؟", options: ["بولس", "بطرس", "لوقا", "برنابا"], correct: 1, ref: "1:12" },
-        { q: "ما هو السؤال الاستنكاري الذي سأله بولس بخصوص المسيح؟", options: ["هل المسيح غائب؟", "هل انقسم المسيح؟", "هل تألم المسيح؟", "هل قام المسيح؟"], correct: 1, ref: "1:13" },
-        { q: "هل صُلب بولس لأجل أهل كورنثوس؟", options: ["نعم", "كلا", "ربما", "لم يذكر"], correct: 1, ref: "1:13" },
-        { q: "باسم من اعتمد أهل كورنثوس؟", options: ["اسم بولس", "اسم أبلوس", "اسم الرب يسوع", "اسم سوسثانيس"], correct: 2, ref: "1:13" },
-        { q: "من هم الأشخاص الذين ذكر بولس أنه عمدهم بنفسه؟", options: ["كريسبس وغايس", "سوسثانيس ولوقا", "بطرس وأندراوس", "مريم ومرثا"], correct: 0, ref: "1:14" },
-        { q: "أي بيت قام بولس بتعميده أيضاً؟", options: ["بيت ليديا", "بيت استفاناس", "بيت كيرنيليوس", "بيت فيلبس"], correct: 1, ref: "1:16" },
-        { q: "لماذا أرسل المسيح بولس حسب قوله؟", options: ["ليعمد فقط", "ليبشر", "ليحاكم", "ليجمع أموالاً"], correct: 1, ref: "1:17" },
-        { q: "بشر بولس الإنجيل بغير... لئلا يتعطل صليب المسيح؟", options: ["حكمة كلام", "مال كثير", "خوف", "تردد"], correct: 0, ref: "1:17" },
-        { q: "كلمة الصليب عند الهالكين هي...؟", options: ["قوة", "جهالة", "فلسفة", "حزن"], correct: 1, ref: "1:18" },
-        { q: "كلمة الصليب عندنا نحن المخلصين هي...؟", options: ["حكمة بشرية", "قوة الله", "ضعف إنساني", "خرافة"], correct: 1, ref: "1:18" },
-        { q: "ماذا سيفعل الله بحكمة الحكماء حسب المكتوب؟", options: ["يبيدها", "يمجدها", "يجمعها", "ينشرها"], correct: 0, ref: "1:19" },
-        { q: "أين الحكيم؟ أين الكاتب؟ أين... هذا الدهر؟", options: ["مباحث", "فيلسوف", "ملك", "غني"], correct: 0, ref: "1:20" },
-        { q: "ألم يجهل الله... هذا العالم؟", options: ["قوة", "حكمة", "جمال", "فنون"], correct: 1, ref: "1:20" },
-        { q: "بواسطة ماذا سُرّ الله أن يخلص المؤمنين؟", options: ["جهالة الكرازة", "حكمة المنطق", "المعجزات الكبرى", "المال والجاه"], correct: 0, ref: "1:21" },
-        { q: "ماذا يطلب اليهود؟", options: ["حكمة", "آية", "مالاً", "سلطة"], correct: 1, ref: "1:22" },
-        { q: "ماذا يطلب اليونانيون؟", options: ["آيات", "حكمة", "أساطير", "أوثان"], correct: 1, ref: "1:22" },
-        { q: "نحن نكرز بـ...؟", options: ["المسيح مصلوباً", "المسيح ملكاً أرضياً", "المسيح فيلسوفاً", "المسيح غنياً"], correct: 0, ref: "1:23" },
-        { q: "المسيح المصلوب لليهود هو...؟", options: ["قوة", "عثرة", "حكمة", "فرح"], correct: 1, ref: "1:23" },
-        { q: "المسيح المصلوب لليونانيين هو...؟", options: ["جهالة", "منطق", "حقيقة", "سر"], correct: 0, ref: "1:23" },
-        { q: "المسيح هو قوة الله و... الله للمدعوين؟", options: ["مجد", "حكمة", "رحمة", "خوف"], correct: 1, ref: "1:24" },
-        { q: "جهالة الله أحكم من...؟", options: ["الناس", "الملائكة", "الشياطين", "الفلاسفة"], correct: 0, ref: "1:25" },
-        { q: "ضعف الله أقوى من...؟", options: ["الناس", "الحديد", "الموت", "المرض"], correct: 0, ref: "1:25" },
-        { q: "انظروا دعوتكم، ليس كثيرون... حسب الجسد؟", options: ["أقوياء", "حكماء", "أغنياء", "ملوك"], correct: 1, ref: "1:26" },
-        { q: "ليس كثيرون... ليس كثيرون شرفاء؟", options: ["علماء", "مقتدرين", "فقراء", "مساكين"], correct: 1, ref: "1:26" },
-        { q: "اختار الله جهال العالم ليخزي...؟", options: ["الأشرار", "الحكماء", "الضعفاء", "الأغنياء"], correct: 1, ref: "1:27" },
-        { q: "اختار الله ضعفاء العالم ليخزي...؟", options: ["الأقوياء", "المرضى", "الفلاسفة", "المتكبرين"], correct: 0, ref: "1:27" },
-        { q: "اختار الله أدنياء العالم و...؟", options: ["المزدرى وغير الموجود", "المعروف والمشهور", "الأغنياء والملوك", "الحكماء والعلماء"], correct: 0, ref: "1:28" },
-        { q: "لماذا اختار الله هذه الأمور الضعيفة؟", options: ["لكي يبطل الموجود", "لكي يجمع المال", "لكي يحارب الرومان", "لكي يمدح الفقر"], correct: 0, ref: "1:28" },
-        { q: "لكي لا يفتخر كل ذي جسد...؟", options: ["أمام الناس", "أمام الله", "أمام نفسه", "أمام الشياطين"], correct: 1, ref: "1:29" },
-        { q: "منه أنتم بالمسيح يسوع الذي صار لنا... من الله؟", options: ["حكمة وبراً", "قوة وغنى", "صحة وعافية", "علماً ومنطقاً"], correct: 0, ref: "1:30" },
-        { q: "ماذا صار لنا المسيح أيضاً بالإضافة للحكمة والبر؟", options: ["قداسة وفداء", "مالاً وجاهاً", "خوفاً ورهبة", "حزناً وألماً"], correct: 0, ref: "1:30" },
-        { q: "من افتخر فليفتخر بـ...؟", options: ["بعلمه", "بالرب", "بأعماله", "بنسبه"], correct: 1, ref: "1:31" },
-        { q: "كم عدد آيات الأصحاح الأول من رسالة كورنثوس الأولى؟", options: ["20 آية", "31 آية", "25 آية", "40 آية"], correct: 1, ref: "الأصحاح 1" },
-        { q: "من هو كاتب هذه الرسالة؟", options: ["بطرس الرسول", "بولس الرسول", "يوحنا الرسول", "يعقوب الرسول"], correct: 1, ref: "1:1" },
-        { q: "لمن وُجهت الرسالة؟", options: ["كنيسة الله التي في روما", "كنيسة الله التي في كورنثوس", "كنيسة أفسس", "كنيسة غلاطية"], correct: 1, ref: "1:2" },
-        { q: "ما هي العبارة التي تكررت كثيراً للتأكيد على مصدر القوة؟", options: ["حكمة الناس", "قوة الله", "بالمسيح يسوع", "بفعل الناموس"], correct: 2, ref: "1:1-31" },
-        { q: "بأي شيء أراد بولس معالجة الانقسامات؟", options: ["بالقوة العسكرية", "باسم ربنا يسوع المسيح", "بالمال", "بالتهديد"], correct: 1, ref: "1:10" },
-        { q: "هل اعتمد بولس عدداً كبيراً من الناس في كورنثوس؟", options: ["نعم الجميع", "لا أحد", "عدد قليل ذكره بالاسم", "لم يذكر"], correct: 2, ref: "1:14-16" },
-        { q: "ما هو المركز الأساسي الذي يدور حوله الأصحاح الأول؟", options: ["الختان", "صليب المسيح وحكمته", "جمع الصدقات", "رحلات بولس"], correct: 1, ref: "1:18" },
-        { q: "أين كُتب 'سأبيد حكمة الحكماء'؟", options: ["في الإنجيل", "في العهد القديم (الأنبياء)", "في الرسالة لروما", "في رؤيا يوحنا"], correct: 1, ref: "1:19" },
-        { q: "لماذا لم تدرك الحكمة البشرية الله؟", options: ["لأن الله أخفى نفسه", "لأن العالم في حكمته لم يعرف الله", "لأن الفلسفة صعبة", "لأن الكتب ضاعت"], correct: 1, ref: "1:21" },
-        { q: "ماذا يمثل صليب المسيح بالنسبة للمؤمنين؟", options: ["فشلاً", "قوة الله وحكمته", "مجرد ذكرى", "حكماً بالموت"], correct: 1, ref: "1:24" },
-        { q: "ماذا قصد بولس بـ 'المزدري وغير الموجود'؟", options: ["الأوثان", "الأمم الذين لم يكونوا شعباً", "الأباطرة الرومان", "الفلاسفة اليونان"], correct: 1, ref: "1:28" },
-        { q: "كيف نال المؤمنون البر والقداسة؟", options: ["بأعمالهم الذاتية", "بالمسيح يسوع", "بحفظ السبت", "بدراسة الفلسفة"], correct: 1, ref: "1:30" },
-        { q: "ما هو الهدف النهائي من اختيار الله للضعفاء؟", options: ["إهانة الناس", "أن لا يفتخر بشر أمامه", "تغيير نظام الحكم", "نشر الفقر"], correct: 1, ref: "1:29" }
-    ];
-
-    let current = 0, answers = new Array(questions.length).fill(null), skipped = new Set(), timeLeft = 20 * 60, timer;
-
-    async function startQuiz() {
-        const name = document.getElementById('u-name').value.trim();
-        const phone = document.getElementById('u-phone').value.trim();
-        const address = document.getElementById('u-address').value.trim();
-        const birthdate = document.getElementById('u-birthdate').value;
-
-        if(!name || !phone || !address || !birthdate) return alert("برجاء ملء كافة البيانات.");
-        if(localStorage.getItem(ATTEMPT_KEY)) return alert("لقد شاركت مسبقاً.");
-        
-        try {
-            // Auth Rule 3: Wait for auth before anything else
-            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                await auth.signInWithCustomToken(__initial_auth_token);
-            } else {
-                await auth.signInAnonymously();
-            }
-
-            switchScreen('quiz-screen');
-            document.getElementById('timer-box').style.display = 'inline-block';
-            document.getElementById('mini-logo').style.display = 'block';
-            initQuiz();
-            startTimer();
-        } catch(e) { 
-            console.error("Login/Start error:", e);
-            alert("حدث خطأ في الاتصال بالخدمة. تأكد من جودة الإنترنت."); 
-        }
-    }
-
-    function initQuiz() {
-        const wrapper = document.getElementById('q-wrapper');
-        const grid = document.getElementById('nav-grid');
-        wrapper.innerHTML = ""; grid.innerHTML = "";
-        questions.forEach((q, i) => {
-            const div = document.createElement('div');
-            div.className = `screen ${i===0?'active-screen':''}`;
-            div.id = `q-cnt-${i}`;
-            div.innerHTML = `<div style="font-weight:bold; margin-bottom:15px; text-align:right;">${i+1}. ${q.q}</div>${q.options.map((opt, idx) => `<div class="option-item" style="text-align:right;" id="opt-${i}-${idx}" onclick="select(${i}, ${idx})">${opt}</div>`).join('')}`;
-            wrapper.appendChild(div);
-            const dot = document.createElement('div');
-            dot.className = `nav-dot ${i===0?'current':''}`;
-            dot.id = `dot-${i}`; dot.innerText = i+1; dot.onclick = () => jump(i);
-            grid.appendChild(dot);
-        });
-    }
-
-    function select(qIdx, optIdx) {
-        answers[qIdx] = optIdx;
-        skipped.delete(qIdx);
-        document.querySelectorAll(`#q-cnt-${qIdx} .option-item`).forEach((el, idx) => el.classList.toggle('selected', idx === optIdx));
-        const dot = document.getElementById(`dot-${qIdx}`);
-        dot.classList.remove('skipped');
-        dot.classList.add('answered');
-        setTimeout(() => nav(1), 300);
-    }
-
-    function skipCurrent() {
-        if(answers[current] === null) {
-            skipped.add(current);
-            document.getElementById(`dot-${current}`).classList.add('skipped');
-        }
-        nav(1);
-    }
-
-    function jump(n) {
-        document.querySelectorAll('#q-wrapper .screen').forEach(c => c.classList.remove('active-screen'));
-        document.querySelectorAll('.nav-dot').forEach(d => d.classList.remove('current'));
-        current = n;
-        document.getElementById(`q-cnt-${current}`).classList.add('active-screen');
-        document.getElementById(`dot-${current}`).classList.add('current');
-        document.getElementById('finish-btn').style.display = (current === questions.length - 1) ? 'block' : 'none';
-        window.scrollTo(0,0);
-    }
-
-    function nav(step) { let t = current + step; if(t >= 0 && t < questions.length) jump(t); }
-
-    function startTimer() {
-        timer = setInterval(() => {
-            timeLeft--;
-            if(timeLeft <= 0) finish(true);
-            const m = Math.floor(timeLeft/60), s = timeLeft%60;
-            const display = document.getElementById('timer-box');
-            if (display) display.innerText = `${m}:${s<10?'0':''}${s}`;
-        }, 1000);
-    }
-
-    async function finish(auto = false) {
-        const unans = answers.filter(a => a === null).length;
-        if(!auto && unans > 0 && !confirm(`لديك ${unans} سؤالاً لم تجب عليها. هل تريد الإرسال؟`)) return;
-        if(!auto && unans === 0 && !confirm("هل تريد إرسال النتيجة؟")) return;
-        
-        clearInterval(timer);
-        let score = 0;
-        questions.forEach((q, i) => { if(answers[i] === q.correct) score++; });
-        
-        try {
-            // Auth Check
-            const user = auth.currentUser;
-            if (!user) throw new Error("Not authenticated");
-
-            // Firestore Path Rule 1
-            const resultsRef = db.collection("artifacts").doc(appId).collection("public").doc("data").collection("results");
-            
-            await resultsRef.add({
-                name: document.getElementById('u-name').value,
-                phone: document.getElementById('u-phone').value,
-                address: document.getElementById('u-address').value,
-                birthdate: document.getElementById('u-birthdate').value,
-                score: score,
-                userId: user.uid,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            
-            localStorage.setItem(ATTEMPT_KEY, "true");
-            switchScreen('results-screen');
-            document.getElementById('mini-logo').style.display = 'none';
-            document.getElementById('final-score').innerText = `${score}/60`;
-            document.getElementById('timer-box').style.display = 'none';
-            generateReview();
-        } catch(e) { 
-            console.error("Save error:", e);
-            alert("فشل إرسال النتيجة. برجاء المحاولة مرة أخرى."); 
-        }
-    }
-
-    function generateReview() {
-        const reviewList = document.getElementById('review-list');
-        let html = "";
-        questions.forEach((q, i) => {
-            const isCorrect = answers[i] === q.correct;
-            html += `
-                <div class="review-card ${isCorrect ? 'correct-card' : 'wrong-card'}">
-                    <b>${i + 1}. ${q.q}</b>
-                    <div style="margin-top:5px;">
-                        <span style="color:${isCorrect ? 'var(--success)' : 'var(--danger)'}">
-                            إجابتك: ${answers[i] !== null ? q.options[answers[i]] : 'لم يتم الإجابة'}
-                        </span>
-                        ${!isCorrect ? `<br><span style="color:var(--success)">الإجابة الصحيحة: ${q.options[q.correct]}</span>` : ''}
-                    </div>
-                    <span class="ref-tag">المرجع: (1 كو ${q.ref})</span>
-                </div>
-            `;
-        });
-        reviewList.innerHTML = html;
-    }
-
-    function showReview() {
-        const list = document.getElementById('review-list');
-        list.style.display = 'block';
-        window.scrollTo({ top: list.offsetTop, behavior: 'smooth' });
-    }
-
-    function showAdminLogin() { 
-        if(prompt("كلمة المرور:") === "24724") { 
-            switchScreen('admin-screen'); 
-            loadAdmin(); 
-        } 
-    }
-
-    function switchScreen(id) { 
-        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active-screen')); 
-        const target = document.getElementById(id);
-        if (target) target.classList.add('active-screen'); 
-    }
-
-    async function loadAdmin() {
-        const content = document.getElementById('admin-content');
-        try {
-            const user = auth.currentUser;
-            if (!user) {
-                await auth.signInAnonymously();
-            }
-
-            // Path Compliance Rule 1
-            const snap = await db.collection("artifacts").doc(appId).collection("public").doc("data").collection("results").get();
-            
-            let data = []; 
-            snap.forEach(d => data.push(d.data()));
-            
-            // Sorting in memory (Rule 2)
-            data.sort((a,b) => (b.score || 0) - (a.score || 0));
-            
-            let h = `<table style="direction:rtl; width:100%;">
-                        <tr style="background:#eee;">
-                            <th>الاسم</th>
-                            <th>الدرجة</th>
-                            <th>الموبايل</th>
-                            <th>العنوان</th>
-                        </tr>`;
-            
-            data.forEach(r => h += `
-                <tr style="border-bottom:1px solid #ddd;">
-                    <td>${r.name || 'مجهول'}</td>
-                    <td><b>${r.score || 0}</b></td>
-                    <td>${r.phone || '-'}</td>
-                    <td style="font-size:0.7rem;">${r.address || '-'}</td>
-                </tr>`);
-            
-            content.innerHTML = h + "</table>";
-        } catch(e) { 
-            console.error("Admin Load Error:", e);
-            content.innerHTML = "خطأ في تحميل البيانات."; 
-        }
-    }
-</script>
 </body>
 </html>
