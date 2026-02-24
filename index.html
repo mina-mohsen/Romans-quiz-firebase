@@ -9,7 +9,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
-        import { getFirestore, collection, doc, addDoc, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+        import { getFirestore, collection, doc, addDoc, getDocs, serverTimestamp, query } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
 
         let db, auth, user;
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'corinthians-quiz-1';
@@ -21,18 +21,25 @@
                 auth = getAuth(app);
                 db = getFirestore(app);
 
-                const login = async () => {
+                const initAuth = async () => {
                     try {
                         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                             await signInWithCustomToken(auth, __initial_auth_token);
                         } else {
                             await signInAnonymously(auth);
                         }
-                    } catch (e) { console.error("Auth retry background"); }
+                    } catch (e) { 
+                        console.error("Auth failed, retrying...");
+                        setTimeout(initAuth, 2000);
+                    }
                 };
-                login();
-                onAuthStateChanged(auth, (u) => { user = u; });
-            } catch (e) { console.error("Config error"); }
+                
+                initAuth();
+                onAuthStateChanged(auth, (u) => { 
+                    user = u;
+                    console.log("Auth State Changed:", u ? "Logged In" : "Logged Out");
+                });
+            } catch (e) { console.error("Firebase Init Error"); }
         }
 
         initFirebase();
@@ -182,7 +189,7 @@
                         uid: user.uid,
                         timestamp: serverTimestamp()
                     });
-                } catch (e) { console.error("Save background failed"); }
+                } catch (e) { console.error("Save background failed", e); }
             }
         };
 
@@ -201,6 +208,7 @@
         window.showReview = () => document.getElementById('review-list').style.display = 'block';
 
         window.showAdmin = async () => {
+            if (!user) return alert("الرجاء الانتظار حتى يتم تحميل النظام...");
             const pass = prompt("كلمة السر:");
             if(pass === "24724") {
                 switchScreen('admin-screen');
@@ -211,11 +219,20 @@
                     const snap = await getDocs(col);
                     let results = [];
                     snap.forEach(d => results.push(d.data()));
+                    
+                    if (results.length === 0) {
+                        content.innerText = "لا توجد نتائج مسجلة بعد.";
+                        return;
+                    }
+                    
                     results.sort((a,b) => b.score - a.score);
-                    content.innerHTML = `<table><tr><th>الاسم</th><th>الدرجة</th><th>التاريخ</th></tr>
+                    content.innerHTML = `<table><tr><th>الاسم</th><th>الدرجة</th><th>تاريخ الميلاد</th></tr>
                         ${results.map(r => `<tr><td>${r.name}</td><td>${r.score}</td><td>${r.birthdate || '-'}</td></tr>`).join('')}
                     </table>`;
-                } catch(e) { content.innerText = "فشل في جلب البيانات."; }
+                } catch(e) { 
+                    console.error(e);
+                    content.innerText = "حدث خطأ في جلب البيانات. تأكد من جودة الإنترنت."; 
+                }
             }
         };
 
@@ -256,7 +273,7 @@
 <div class="container">
     <header>
         <div id="timer-box">20:00</div>
-        <h3 id="app-title" onclick="showAdmin()">مسابقة 1 كورنثوس 1</h3>
+        <h3 id="app-title" onclick="showAdmin()" style="cursor: pointer;">مسابقة 1 كورنثوس 1</h3>
     </header>
 
     <!-- Registration -->
@@ -287,7 +304,7 @@
     <div id="results-screen" class="screen">
         <div style="text-align: center;">
             <h1 id="final-score" style="color:var(--win); font-size: 2.5rem;">0/60</h1>
-            <p>تم التسجيل بنجاح.</p>
+            <p>تم تسجيل نتيجتك بنجاح.</p>
             <button class="btn-main" onclick="showReview()">مراجعة الإجابات</button>
         </div>
         <div id="review-list" style="display: none; margin-top: 15px;"></div>
@@ -295,8 +312,8 @@
 
     <!-- Admin -->
     <div id="admin-screen" class="screen">
-        <h4>لوحة التحكم</h4>
-        <div id="admin-content" style="overflow-x: auto;"></div>
+        <h4>لوحة التحكم - النتائج</h4>
+        <div id="admin-content" style="overflow-x: auto; min-height: 100px;"></div>
         <button class="btn-main" onclick="location.reload()">خروج</button>
     </div>
 </div>
