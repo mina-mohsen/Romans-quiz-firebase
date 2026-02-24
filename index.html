@@ -83,6 +83,7 @@
         <div class="block-message">
             <h2>عذراً!</h2>
             <p>لقد قمت بحل هذه المسابقة مسبقاً من هذا الجهاز. لضمان تكافؤ الفرص، يُسمح بالمشاركة مرة واحدة فقط.</p>
+            <p style="font-size: 0.8rem; color: #95a5a6; margin-top: 20px;">(ملاحظة للمسؤول: جرب استخدام كود "تخطي" في صفحة التسجيل لمسح الحظر)</p>
         </div>
     </div>
 
@@ -125,7 +126,6 @@
 </div>
 
 <script>
-    // الرابط الخاص بـ Google Apps Script الذي قدمته
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyGvzORDW-DEuH9RSH3Mpk05xalEzOAeGraC8wo0jjPcdJX02TFy1Z04x8Kkf5qv89dIw/exec";
 
     const questions = [
@@ -185,19 +185,29 @@
     let userData = {};
 
     window.onload = function() {
+        // فحص حالة الحظر عند التحميل
         if (localStorage.getItem('quiz_completed_1co')) {
             switchScreen('block-screen');
         }
     };
 
     function startQuiz() {
+        const nameInput = document.getElementById('u-name').value.trim();
+        
+        // خدعة الـ LocalStorage: إذا كتبت "adminreset" في خانة الاسم سيفتح لك الجهاز حتى لو محظور
+        if (nameInput === "adminreset") {
+            localStorage.removeItem('quiz_completed_1co');
+            location.reload();
+            return;
+        }
+
         if (localStorage.getItem('quiz_completed_1co')) {
             switchScreen('block-screen');
             return;
         }
 
         userData = {
-            name: document.getElementById('u-name').value.trim(),
+            name: nameInput,
             phone: document.getElementById('u-phone').value.trim(),
             address: document.getElementById('u-address').value.trim(),
             birthdate: document.getElementById('u-birthdate').value
@@ -295,7 +305,6 @@
         };
 
         try {
-            // استخدام fetch مع البيانات المرسلة لـ Google Apps Script
             await fetch(SCRIPT_URL, {
                 method: 'POST',
                 mode: 'no-cors',
