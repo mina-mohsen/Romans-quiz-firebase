@@ -9,40 +9,30 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
-        import { getFirestore, collection, doc, addDoc, getDocs, serverTimestamp, query } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+        import { getFirestore, collection, doc, addDoc, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
 
-        let db, auth, user;
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'corinthians-quiz-1';
         
-        async function initFirebase() {
+        let user = null;
+
+        // Force Auth immediately
+        const initAuth = async () => {
             try {
-                const firebaseConfig = JSON.parse(__firebase_config);
-                const app = initializeApp(firebaseConfig);
-                auth = getAuth(app);
-                db = getFirestore(app);
-
-                const initAuth = async () => {
-                    try {
-                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                            await signInWithCustomToken(auth, __initial_auth_token);
-                        } else {
-                            await signInAnonymously(auth);
-                        }
-                    } catch (e) { 
-                        console.error("Auth failed, retrying...");
-                        setTimeout(initAuth, 2000);
-                    }
-                };
-                
-                initAuth();
-                onAuthStateChanged(auth, (u) => { 
-                    user = u;
-                    console.log("Auth State Changed:", u ? "Logged In" : "Logged Out");
-                });
-            } catch (e) { console.error("Firebase Init Error"); }
-        }
-
-        initFirebase();
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (e) {
+                console.error("Auth Error", e);
+            }
+        };
+        initAuth();
+        onAuthStateChanged(auth, (u) => { user = u; });
 
         const questions = [
             { q: "من هو الشخص الذي شارك بولس الرسول في إرسال التحية لكورنثوس؟", options: ["تيموثاوس", "سوسثانيس", "لوقا", "سيلا"], correct: 1, ref: "1:1" },
@@ -108,7 +98,7 @@
         ];
 
         let current = 0, answers = new Array(questions.length).fill(null), timeLeft = 20 * 60, timer;
-        const lockKey = "corinth_lock_1";
+        const lockKey = "cor_lock_final_v1";
 
         window.startQuiz = () => {
             const fields = ['u-name', 'u-phone', 'u-address', 'u-birthdate'];
@@ -142,7 +132,7 @@
             answers[qIdx] = optIdx;
             document.querySelectorAll(`#q-cnt-${qIdx} .option-item`).forEach((el, idx) => el.classList.toggle('selected', idx === optIdx));
             document.getElementById(`dot-${qIdx}`).classList.add('answered');
-            setTimeout(() => nav(1), 250);
+            setTimeout(() => nav(1), 200);
         };
 
         window.jump = (n) => {
@@ -177,20 +167,19 @@
             generateReview();
             localStorage.setItem(lockKey, "done");
 
-            if (user && db) {
-                try {
-                    const resultsCol = collection(db, "artifacts", appId, "public", "data", "results");
-                    await addDoc(resultsCol, {
-                        name: document.getElementById('u-name').value,
-                        phone: document.getElementById('u-phone').value,
-                        address: document.getElementById('u-address').value,
-                        birthdate: document.getElementById('u-birthdate').value,
-                        score: score,
-                        uid: user.uid,
-                        timestamp: serverTimestamp()
-                    });
-                } catch (e) { console.error("Save background failed", e); }
-            }
+            // Save Attempt
+            try {
+                const resultsCol = collection(db, "artifacts", appId, "public", "data", "results");
+                await addDoc(resultsCol, {
+                    name: document.getElementById('u-name').value,
+                    phone: document.getElementById('u-phone').value,
+                    address: document.getElementById('u-address').value,
+                    birthdate: document.getElementById('u-birthdate').value,
+                    score: score,
+                    uid: user?.uid || "anon",
+                    timestamp: serverTimestamp()
+                });
+            } catch (e) { console.error("Save Error", e); }
         };
 
         function generateReview() {
@@ -208,12 +197,12 @@
         window.showReview = () => document.getElementById('review-list').style.display = 'block';
 
         window.showAdmin = async () => {
-            if (!user) return alert("الرجاء الانتظار حتى يتم تحميل النظام...");
             const pass = prompt("كلمة السر:");
             if(pass === "24724") {
                 switchScreen('admin-screen');
                 const content = document.getElementById('admin-content');
-                content.innerText = "جاري التحميل...";
+                content.innerHTML = `<div style="padding:20px; text-align:center;">جاري جلب النتائج...</div>`;
+                
                 try {
                     const col = collection(db, "artifacts", appId, "public", "data", "results");
                     const snap = await getDocs(col);
@@ -221,17 +210,16 @@
                     snap.forEach(d => results.push(d.data()));
                     
                     if (results.length === 0) {
-                        content.innerText = "لا توجد نتائج مسجلة بعد.";
-                        return;
+                        content.innerHTML = `<div style="padding:20px; text-align:center;">لا توجد نتائج مسجلة حتى الآن.</div>`;
+                    } else {
+                        results.sort((a,b) => (b.score || 0) - (a.score || 0));
+                        content.innerHTML = `<table><tr><th>الاسم</th><th>الدرجة</th><th>الموبايل</th></tr>
+                            ${results.map(r => `<tr><td>${r.name}</td><td>${r.score}</td><td>${r.phone}</td></tr>`).join('')}
+                        </table>`;
                     }
-                    
-                    results.sort((a,b) => b.score - a.score);
-                    content.innerHTML = `<table><tr><th>الاسم</th><th>الدرجة</th><th>تاريخ الميلاد</th></tr>
-                        ${results.map(r => `<tr><td>${r.name}</td><td>${r.score}</td><td>${r.birthdate || '-'}</td></tr>`).join('')}
-                    </table>`;
                 } catch(e) { 
+                    content.innerHTML = `<div style="color:red; padding:20px; text-align:center;">حدث خطأ أثناء جلب البيانات. برجاء المحاولة مرة أخرى.</div>`;
                     console.error(e);
-                    content.innerText = "حدث خطأ في جلب البيانات. تأكد من جودة الإنترنت."; 
                 }
             }
         };
@@ -243,29 +231,33 @@
     </script>
 
     <style>
-        :root { --p: #2c3e50; --s: #34495e; --acc: #d35400; --win: #27ae60; --err: #c0392b; }
-        * { box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
-        body { background: #ecf0f1; margin: 0; padding: 10px; display: flex; justify-content: center; }
-        .container { width: 100%; max-width: 500px; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        header { text-align: center; border-bottom: 2px solid #eee; margin-bottom: 15px; position: relative; }
-        #timer-box { color: var(--err); font-weight: bold; font-size: 1.1rem; display: none; }
-        .screen { display: none; flex-direction: column; gap: 12px; }
+        :root { --p: #2c3e50; --s: #34495e; --win: #27ae60; --err: #c0392b; }
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: #f4f7f6; margin: 0; padding: 10px; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; }
+        .container { width: 100%; max-width: 500px; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        header { text-align: center; border-bottom: 2px solid #f1f1f1; margin-bottom: 20px; padding-bottom: 10px; }
+        #timer-box { color: var(--err); font-weight: bold; font-size: 1.2rem; display: none; margin-bottom: 10px; }
+        .screen { display: none; flex-direction: column; gap: 15px; }
         .active-screen { display: flex; }
-        label { font-size: 0.8rem; color: #666; margin-bottom: -10px; margin-right: 5px; }
-        input { padding: 10px; border: 1px solid #ddd; border-radius: 6px; width: 100%; font-size: 0.9rem; }
-        .btn-main { background: var(--p); color: white; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
-        .q-text { font-weight: bold; margin-bottom: 8px; font-size: 1rem; }
-        .option-item { background: #f9f9f9; padding: 10px; border: 1px solid #eee; border-radius: 6px; cursor: pointer; font-size: 0.9rem; }
-        .option-item.selected { background: #d1ecf1; border-color: #0c5460; font-weight: bold; }
-        .nav-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; margin-top: 10px; }
-        .nav-dot { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; background: #eee; border-radius: 3px; font-size: 0.6rem; cursor: pointer; }
-        .nav-dot.current { border: 2px solid var(--p); }
+        label { font-size: 0.85rem; color: #555; margin-bottom: -10px; margin-right: 5px; }
+        input { padding: 12px; border: 1px solid #ddd; border-radius: 8px; width: 100%; font-size: 1rem; transition: border 0.3s; }
+        input:focus { border-color: var(--p); outline: none; }
+        .btn-main { background: var(--p); color: white; padding: 14px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1rem; transition: opacity 0.2s; }
+        .btn-main:active { opacity: 0.8; }
+        .q-text { font-weight: bold; margin-bottom: 10px; font-size: 1.1rem; line-height: 1.4; color: var(--p); }
+        .option-item { background: #f8f9fa; padding: 12px; border: 1px solid #eee; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
+        .option-item:hover { background: #e9ecef; }
+        .option-item.selected { background: #d1ecf1; border-color: #bee5eb; font-weight: bold; transform: scale(1.02); }
+        .nav-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 5px; margin-top: 15px; }
+        .nav-dot { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; background: #eee; border-radius: 4px; font-size: 0.7rem; cursor: pointer; }
+        .nav-dot.current { background: var(--p); color: white; }
         .nav-dot.answered { background: var(--win); color: white; }
-        .review-card { padding: 8px; border-radius: 6px; margin-bottom: 8px; font-size: 0.85rem; border: 1px solid #eee; }
-        .correct-card { border-right: 4px solid var(--win); background: #f0fff4; }
-        .wrong-card { border-right: 4px solid var(--err); background: #fff5f5; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.75rem; }
-        th, td { border: 1px solid #eee; padding: 6px; text-align: center; }
+        .review-card { padding: 12px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #eee; }
+        .correct-card { border-right: 5px solid var(--win); background: #fafffb; }
+        .wrong-card { border-right: 5px solid var(--err); background: #fffafb; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85rem; }
+        th, td { border: 1px solid #eee; padding: 10px; text-align: center; }
+        th { background: #f8f9fa; }
     </style>
 </head>
 <body>
@@ -273,48 +265,50 @@
 <div class="container">
     <header>
         <div id="timer-box">20:00</div>
-        <h3 id="app-title" onclick="showAdmin()" style="cursor: pointer;">مسابقة 1 كورنثوس 1</h3>
+        <h3 id="app-title" onclick="showAdmin()" style="cursor: pointer; margin: 0;">مسابقة 1 كورنثوس 1</h3>
+        <p style="font-size: 0.8rem; color: #888; margin-top: 5px;">اضغط على العنوان للدخول كأدمن</p>
     </header>
 
     <!-- Registration -->
     <div id="reg-screen" class="screen active-screen">
-        <div style="text-align: center;">
-            <img src="https://imgur.com/hH7HWvE.jpeg" style="width: 80px; height: 80px; border-radius: 50%;">
+        <div style="text-align: center; margin-bottom: 10px;">
+            <img src="https://imgur.com/hH7HWvE.jpeg" style="width: 100px; height: 100px; border-radius: 50%; border: 3px solid #eee;">
         </div>
-        <input type="text" id="u-name" placeholder="الاسم الكامل">
-        <input type="tel" id="u-phone" placeholder="رقم الموبايل">
-        <input type="text" id="u-address" placeholder="العنوان">
+        <input type="text" id="u-name" placeholder="الاسم الرباعي">
+        <input type="tel" id="u-phone" placeholder="رقم الموبايل (واتساب)">
+        <input type="text" id="u-address" placeholder="المنطقة / العنوان">
         <label>تاريخ الميلاد:</label>
         <input type="date" id="u-birthdate">
-        <button class="btn-main" onclick="startQuiz()">ابدأ الآن</button>
+        <button class="btn-main" onclick="startQuiz()">ابدأ المسابقة</button>
     </div>
 
     <!-- Quiz -->
     <div id="quiz-screen" class="screen">
         <div id="q-wrapper"></div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-            <button class="btn-main" style="background:#7f8c8d" onclick="nav(-1)">السابق</button>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <button class="btn-main" style="background:#95a5a6" onclick="nav(-1)">السابق</button>
             <button class="btn-main" onclick="nav(1)">التالي</button>
         </div>
-        <button id="finish-btn" class="btn-main" style="background:var(--win); display:none;" onclick="finishQuiz()">إنهاء</button>
+        <button id="finish-btn" class="btn-main" style="background:var(--win); display:none;" onclick="finishQuiz()">إنهاء وإرسال النتيجة</button>
         <div class="nav-grid" id="nav-grid"></div>
     </div>
 
     <!-- Results -->
     <div id="results-screen" class="screen">
-        <div style="text-align: center;">
-            <h1 id="final-score" style="color:var(--win); font-size: 2.5rem;">0/60</h1>
-            <p>تم تسجيل نتيجتك بنجاح.</p>
-            <button class="btn-main" onclick="showReview()">مراجعة الإجابات</button>
+        <div style="text-align: center; padding: 20px 0;">
+            <div style="font-size: 1.2rem; margin-bottom: 10px;">نتيجتك هي:</div>
+            <h1 id="final-score" style="color:var(--win); font-size: 3.5rem; margin: 0;">0/60</h1>
+            <p style="color: #666; margin-top: 15px;">شكراً لمشاركتك! تم حفظ النتيجة.</p>
+            <button class="btn-main" onclick="showReview()" style="width: 100%;">مراجعة الإجابات الصحيحة</button>
         </div>
-        <div id="review-list" style="display: none; margin-top: 15px;"></div>
+        <div id="review-list" style="display: none; margin-top: 10px;"></div>
     </div>
 
     <!-- Admin -->
     <div id="admin-screen" class="screen">
-        <h4>لوحة التحكم - النتائج</h4>
-        <div id="admin-content" style="overflow-x: auto; min-height: 100px;"></div>
-        <button class="btn-main" onclick="location.reload()">خروج</button>
+        <h4 style="margin: 0; text-align: center;">لوحة إدارة النتائج</h4>
+        <div id="admin-content" style="overflow-x: auto; background: #fff; border-radius: 8px;"></div>
+        <button class="btn-main" onclick="location.reload()" style="background: var(--err);">خروج</button>
     </div>
 </div>
 
