@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>مسابقة رسالة كورنثوس الأولى</title>
+    <title>مسابقة رسالة كورنثوس الثانية</title>
     <style>
         :root {
             --primary: #2c3e50;
@@ -49,7 +49,6 @@
 
         .btn-main { background: var(--primary); color: white; padding: 14px; border: none; border-radius: 12px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: transform 0.1s; }
         .btn-main:active { transform: scale(0.97); }
-        .btn-skip { background: #ecf0f1; color: var(--secondary); border: 1px solid #bdc3c7; margin-top: 5px; }
 
         .option-item { background: #f8f9f9; padding: 14px; border-radius: 12px; cursor: pointer; border: 2px solid #ebedef; margin-bottom: 8px; text-align: right; }
         .option-item.selected { background: #ebf5fb; border-color: var(--primary); font-weight: bold; }
@@ -58,12 +57,10 @@
         .nav-dot { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; background: #eee; border-radius: 8px; font-size: 0.8rem; cursor: pointer; }
         .nav-dot.current { background: var(--primary); color: white; border: 2px solid #34495e; }
         .nav-dot.answered { background: var(--success); color: white; }
-        .nav-dot.skipped { background: var(--skipped); color: white; }
 
         .review-card { padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #eee; font-size: 0.9rem; text-align: right; }
         .review-card.correct-card { border-right: 5px solid var(--success); background: #f0f9f4; }
         .review-card.wrong-card { border-right: 5px solid var(--danger); background: #fdf2f2; }
-        .ref-tag { color: var(--accent); font-weight: bold; font-size: 0.85rem; display: block; margin-top: 5px; }
 
         .block-message { text-align: center; color: var(--danger); font-weight: bold; padding: 20px; }
         #status-msg { font-size: 1rem; margin-top: 15px; text-align: center; padding: 10px; border-radius: 10px; }
@@ -73,7 +70,7 @@
 
 <div class="container">
     <header>
-        <h1>مسابقة رسالة كورنثوس الأولى</h1>
+        <h1>مسابقة رسالة كورنثوس الثانية</h1>
         <div id="timer-box" style="display:none;">25:00</div>
     </header>
 
@@ -104,7 +101,6 @@
             <button class="btn-main" style="background:#95a5a6;" onclick="nav(-1)">السابق</button>
             <button class="btn-main" onclick="nav(1)">التالي</button>
         </div>
-        <button class="btn-main btn-skip" onclick="skipCurrent()">تأجيل السؤال</button>
         <button id="finish-btn" class="btn-main" style="background:var(--success); display: none; margin-top: 5px;" onclick="finishQuiz()">إنهاء وحفظ النتيجة</button>
         <div class="nav-grid" id="nav-grid"></div>
     </div>
@@ -114,8 +110,8 @@
         <div style="text-align:center;">
             <h2 style="color: var(--success);">تمت عملية الإرسال!</h2>
             <div id="status-msg">جاري التأكيد...</div>
-            <div id="final-score" style="font-size: 3rem; font-weight: bold; color: var(--primary); margin: 15px 0;">0/50</div>
-            <p style="color: #7f8c8d;">تم تسجيل إجاباتك بنجاح في قاعدة البيانات.</p>
+            <div id="final-score" style="font-size: 3rem; font-weight: bold; color: var(--primary); margin: 15px 0;">0/30</div>
+            <p style="color: #7f8c8d;">تم تسجيل إجاباتك بنجاح في قاعدة البيانات (الإكسيل).</p>
             
             <button class="btn-main" style="background:#3498db; width: 100%; margin-top: 15px;" onclick="toggleReview()">مراجعة الإجابات</button>
         </div>
@@ -124,74 +120,55 @@
 </div>
 
 <script>
+    // استخدم نفس الرابط الخاص بـ Google Script
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyGvzORDW-DEuH9RSH3Mpk05xalEzOAeGraC8wo0jjPcdJX02TFy1Z04x8Kkf5qv89dIw/exec";
 
     const questions = [
-        { q: "من هو الشخص الذي ذكره بولس كأخ أرسل معه التحية في بداية الرسالة؟", options: ["تيموثاوس", "سوسثانيس", "لوقا", "سيلا"], correct: 1, ref: "1:1" },
-        { q: "أين كان الحكيم؟ أين الكاتب؟ أين مباحث هذا الدهر؟ ألم يجهل الله... هذا العالم؟", options: ["قوة", "جمال", "حكمة", "عظمة"], correct: 2, ref: "1:20" },
-        { q: "لأنني لم أعزم أن أعرف شيئا بينكم إلا... وإياه مصلوبا؟", options: ["الروح القدس", "يسوع المسيح", "الآب السماوي", "ناموس موسى"], correct: 1, ref: "2:2" },
-        { q: "الإنسان الطبيعي لا يقبل ما لروح الله لأنه عنده...؟", options: ["صعب", "مستحيل", "جهالة", "فلسفة"], correct: 2, ref: "2:14" },
-        { q: "أنا غرست وأبلوس سقى لكن الله كان...؟", options: ["ينظر", "يمدح", "ينمي", "يعين"], correct: 2, ref: "3:6" },
-        { q: "لا يستطيع أحد أن يضع أساسا آخر غير الذي وُضع، الذي هو...؟", options: ["بولس", "بطرس", "يسوع المسيح", "الأنبياء"], correct: 2, ref: "3:11" },
-        { q: "أما تعلمون أنكم... الله، وروح الله يسكن فيكم؟", options: ["شعب", "هيكل", "أبناء", "رعية"], correct: 1, ref: "3:16" },
-        { q: "هكذا فليحسبنا الإنسان كخدام المسيح و... أسرار الله؟", options: ["حفظة", "وكلاء", "مفسري", "تلاميذ"], correct: 1, ref: "4:1" },
-        { q: "لأنه إن كان لكم ربوات من المرشدين في المسيح، لكن ليس... كثيرون؟", options: ["معلمون", "آباء", "أصدقاء", "رسل"], correct: 1, ref: "4:15" },
-        { q: "عزل الخبيث من وسطكم كان بسبب خطية...؟", options: ["السرقة", "الزنا", "الكذب", "القتل"], correct: 1, ref: "5:1" },
-        { q: "ألستم تعلمون أننا سندين...؟ فكم بالأحرى أمور هذه الحياة؟", options: ["العالم", "الملائكة", "الشياطين", "الأمم"], correct: 1, ref: "6:3" },
-        { q: "كل الأشياء تحل لي لكن ليس كل الأشياء...؟", options: ["تبني", "توافق", "تنفع", "تخلص"], correct: 2, ref: "6:12" },
-        { q: "اهربوا من... كل خطية يفعلها الإنسان هي خارج الجسد؟", options: ["الطمع", "الزنا", "الغضب", "الحسد"], correct: 1, ref: "6:18" },
-        { q: "بماذا نصح بولس غير المتزوجين والأرامل؟", options: ["أن يتزوجوا فوراً", "أن يبقوا كما هو", "أن يترهبوا", "لم ينصحهم"], correct: 1, ref: "7:8" },
-        { q: "لأنكم قد اشتريتم... فمجدوا الله في أجسادكم وفي أرواحكم؟", options: ["بثمن", "بالدم", "بالنعمة", "بالإيمان"], correct: 0, ref: "6:20" },
-        { q: "العلم ينفخ ولكن المحبة...؟", options: ["تستر", "تبني", "تنمي", "يعين"], correct: 1, ref: "8:1" },
-        { q: "يقول بولس: إن كان طعام يعثر أخي، فلن أكل... إلى الأبد؟", options: ["خبزاً", "لحماً", "فاكهة", "سمكاً"], correct: 1, ref: "8:13" },
-        { q: "ألست أنا رسولا؟ ألست أنا حرا؟ أما رأيت... ربنا؟", options: ["الملائكة", "يسوع المسيح", "السماء", "الرؤى"], correct: 1, ref: "9:1" },
-        { q: "صرت للكل كل شيء لأخلص على كل حال...؟", options: ["الجميع", "قوماً", "اليهود", "اليونانيين"], correct: 1, ref: "9:22" },
-        { q: "كل من يجاهد يضبط نفسه في كل شيء، أولئك لكي يأخذوا إكليلاً...؟", options: ["ذهبياً", "يفنى", "لا يفنى", "بهياً"], correct: 1, ref: "9:25" },
-        { q: "لم تصبكم تجربة إلا بشرية، ولكن الله... لا يدعكم تُجربون فوق ما تستطيعون؟", options: ["قوي", "محب", "أمين", "عادل"], correct: 2, ref: "10:13" },
-        { q: "فإذا كنتم تأكلون أو تشربون أو تفعلون شيئا، فافعلوا كل شيء لـ...؟", options: ["مجد الله", "راحة أنفسكم", "إرضاء الناس", "بناء الكنيسة"], correct: 0, ref: "10:31" },
-        { q: "كونوا متمثلين بي كما أنا أيضاً بـ...؟", options: ["بطرس", "المسيح", "موسى", "الأنبياء"], correct: 1, ref: "11:1" },
-        { q: "الرجل هو رأس المرأة كما أن المسيح هو رأس...؟", options: ["الكنيسة", "كل رجل", "العالم", "الرسل"], correct: 1, ref: "11:3" },
-        { q: "من أكل هذا الخبز أو شرب كأس الرب بدون استحقاق، يكون مجرماً في...؟", options: ["حق الكنيسة", "جسد الرب ودمه", "حق الفقراء", "الناموس"], correct: 1, ref: "11:27" },
-        { q: "أنواع مواهب موجودة ولكن الروح...؟", options: ["كثير", "واحد", "قدوس", "قوي"], correct: 1, ref: "12:4" },
-        { q: "ألعل الجميع رسل? ألعل الجميع أنبياء? ألعل الجميع...؟", options: ["رعاة", "معلمون", "شمامسة", "قديسون"], correct: 1, ref: "12:29" },
-        { q: "إن كنت أتكلم بألسنة الناس والملائكة ولكن ليس لي محبة، فقد صرت...؟", options: ["شخصاً باراً", "نحاساً يطن", "رسولاً عظيماً", "صمتاً"], correct: 1, ref: "13:1" },
-        { q: "المحبة لا تسقط أبداً، وأما النبوات فستبطل والألسنة...؟", options: ["ستبقى", "ستنتهي", "ستعظم", "ستقوى"], correct: 1, ref: "13:8" },
-        { q: "أما الآن فيثبت: الإيمان والرجاء والمحبة، هذه الثلاثة ولكن أعظمهن...؟", options: ["الإيمان", "الرجاء", "المحبة", "الصبر"], correct: 2, ref: "13:13" },
-        { q: "من يتكلم بلسان يبني نفسه، وأما من يتنبأ فيبني...؟", options: ["الروح", "الكنيسة", "الإيمان", "المجتمع"], correct: 1, ref: "14:4" },
-        { q: "لتكن كل أشياء بلياقة وبحسب...؟", options: ["القانون", "ترتيب", "المعرفة", "الرؤية"], correct: 1, ref: "14:40" },
-        { q: "إن لم يكن المسيح قد قام، فباطلة كرازتنا وباطل أيضاً...؟", options: ["صومكم", "إيمانكم", "عملكم", "جهادكم"], correct: 1, ref: "15:14" },
-        { q: "في آدم يموت الجميع، وفي المسيح سيُحيا...؟", options: ["المؤمنون", "الجميع", "الأبرار", "التلاميذ"], correct: 1, ref: "15:22" },
-        { q: "آخر عدو يبطل هو...؟", options: ["الشيطان", "الموت", "الخطيئة", "العالم"], correct: 1, ref: "15:26" },
-        { q: "المعاشرات الردية تفسد...؟", options: ["الحياة", "الأخلاق الجيدة", "الإيمان", "الأعمال"], correct: 1, ref: "15:33" },
-        { q: "أين شوكتك يا...؟ أين غلبتك يا هاوية؟", options: ["عدو", "موت", "شيطان", "وجع"], correct: 1, ref: "15:55" },
-        { q: "في كل أول أسبوع، ليضع كل واحد منكم عنده، خازنا ما تيسر لجمع...؟", options: ["العشور", "الصدقة", "الضريبة", "الذهب"], correct: 1, ref: "16:2" },
-        { q: "اسهروا، اثبتوا في الإيمان، كونوا رجالاً...؟", options: ["حكماء", "تقووا", "صابرين", "مستعدين"], correct: 1, ref: "16:13" },
-        { q: "لتصر كل أموركم في...？", options: ["هدوء", "محبة", "نظام", "سرعة"], correct: 1, ref: "16:14" },
-        { q: "من لا يحب الرب يسوع المسيح، فليكن...؟", options: ["منبوذاً", "أناثيما", "بعيداً", "مخطئاً"], correct: 1, ref: "16:22" },
-        { q: "ما معنى كلمة 'ماران أثا'؟", options: ["الله محبة", "الرب آت", "سلام لكم", "المجد لله"], correct: 1, ref: "16:22" },
-        { q: "كم عدد أصحاحات رسالة كورنثوس الأولى؟", options: ["12", "14", "16", "21"], correct: 2, ref: "1-16" },
-        { q: "بشر بولس أهل كورنثوس في رحلته التبشيرية...؟", options: ["الأولى", "الثانية", "الثالثة", "الرابعة"], correct: 1, ref: "أعمال 18" },
-        { q: "أي موهبة فضلها بولس على التكلم بألسنة في الأصحاح 14؟", options: ["الشفاء", "التنبؤ", "تفسير الأحلام", "المعجزات"], correct: 1, ref: "14:1" },
-        { q: "من هو 'باكورة الراقدين'؟", options: ["آدم", "إبراهيم", "المسيح", "داود"], correct: 2, ref: "15:20" },
-        { q: "بأي شيء شبه بولس الكنيسة في الأصحاح 12؟", options: ["بالسفينة", "بالجسد الواحد", "بالكرمة", "بالبنيان"], correct: 1, ref: "12:12" },
-        { q: "من هما اللذان ذكر بولس أنهما أرسلا سلاماً في ختام الرسالة؟", options: ["أكيلا وبريسكلا", "بطرس ويعقوب", "يوحنا ومرقس", "فيلبس وأندراوس"], correct: 0, ref: "16:19" },
-        { q: "الذي يفتخر فليفتخر بـ...؟", options: ["نفسه", "أعماله", "الرب", "حكمته"], correct: 2, ref: "1:31" },
-        { q: "محبة المسيح تحصرنا، ولكن في 1 كو 13 المحبة لا...؟", options: ["تتفاخر", "تسقط أبداً", "تحسد", "كل ما سبق"], correct: 3, ref: "13:4-8" }
+        { q: "من هو الذي يصفه بولس في بداية الرسالة بـ 'أبي الرأفات وإله كل تعزية'؟", options: ["السيد المسيح", "الله الآب", "الروح القدس", "الملاك غبريال"], correct: 1 },
+        { q: "لماذا يسمح الله بالضيقات لنا بحسب الأصحاح الأول؟", options: ["لكي يعاقبنا", "لكي نستطيع أن نعزي الذين هم في كل ضيقة", "لكي نترك الخدمة", "لكي نهرب من العالم"], correct: 1 },
+        { q: "في أي مدينة يقول بولس إنه حدثت له ضيقة شديدة حتى أيس من الحياة؟", options: ["روما", "أورشليم", "أسيا (أفسس)", "فيليبي"], correct: 2 },
+        { q: "ما هو القصد من عدم مجيئه إلى كورنثوس بسرعة كما ذكر في الأصحاح الأول؟", options: ["لأنه نسيهم", "إشفاقاً عليهم", "خوفاً من اليهود", "بسبب المرض"], correct: 1 },
+        { q: "من هو الشخص الذي كان بولس يريدهم أن يسامحوه ويثبتوا له المحبة؟", options: ["بطرس", "تيموثاوس", "الشخص المخطئ (التائب)", "أبلوس"], correct: 2 },
+        { q: "يقول بولس: لأننا رائحة المسيح الذكية لله في...؟", options: ["الذين يخلصون وفي الذين يهلكون", "الرسل فقط", "السماء فقط", "أهل كورنثوس فقط"], correct: 0 },
+        { q: "رسالتنا هي أنتم، مكتوبة في قلوبنا... ليست بحبر بل بـ...؟", options: ["قلم ذهبي", "روح الله الحي", "دموع الرسول", "وصايا موسى"], correct: 1 },
+        { q: "الحرف يقتل ولكن الروح...؟", options: ["يبني", "يحيي", "يرشد", "يعزي"], correct: 1 },
+        { q: "أينما كان روح الرب فهناك...؟", options: ["خوف", "حرية", "قوة", "حكمة"], correct: 1 },
+        { q: "ولكن لنا هذا الكنز في أوانٍ... ليكون فضل القوة لله لا منا؟", options: ["ذهبية", "خزفية", "قوية", "ثمينة"], correct: 1 },
+        { q: "خفيف ضيقتنا الوقتي ينشئ لنا أكثر فأكثر ثقل... أبدياً؟", options: ["مجد", "جزاء", "مال", "راحة"], correct: 0 },
+        { q: "لأننا نسلك بـ... لا بالعيان؟", options: ["العقل", "الإيمان", "القوة", "الصدفة"], correct: 1 },
+        { q: "إن كان أحد في المسيح فهو...؟", options: ["تلميذ بار", "خليقة جديدة", "خادم أمين", "إنسان كامل"], correct: 1 },
+        { q: "الله كان في المسيح مصالحاً... لنفسه؟", options: ["اليهود", "العالم", "الرسل", "الملائكة"], correct: 1 },
+        { q: "إذ نحن عاملون معه نطلب أن لا تقبلوا... الله باطلاً؟", options: ["نعمة", "وصية", "كلمة", "قوة"], correct: 0 },
+        { q: "لا تكونوا تحت نير مع...؟", options: ["الخطاة", "غير المؤمنين", "الضعفاء", "الأقوياء"], correct: 1 },
+        { q: "لأن الحزن الذي بحسب مشيئة الله ينشئ... للخلاص؟", options: ["ندماً", "توبة", "يأساً", "بكاءً"], correct: 1 },
+        { q: "من هو الشخص الذي تعزى بولس بمجيئه وبأخبار أهل كورنثوس؟", options: ["تيموثاوس", "تيطس", "مرقس", "لوقا"], correct: 1 },
+        { q: "في الأصحاح 8، ضرب بولس مثلاً في العطاء بسخاء بكنائس...؟", options: ["غلاطية", "مكدونية", "أفسس", "روما"], correct: 1 },
+        { q: "المعطي... يحبه الله؟", options: ["المكثر", "المسرور", "المجبر", "الصامت"], correct: 1 },
+        { q: "لأن أسلحة محاربتنا ليست... بل قادرة بالله على هدم حصون؟", options: ["ضعيفة", "جسدية", "قديمة", "سيوفاً"], correct: 1 },
+        { q: "يقول بولس إنه يفتخر بـ... لكي تحل عليه قوة المسيح؟", options: ["نجاحه", "ضعفاته", "علمه", "رسوليته"], correct: 1 },
+        { q: "من هو الذي يغير شكله إلى شبه ملاك نور؟", options: ["بولس", "بطرس", "الشيطان", "الأنبياء الكذبة"], correct: 2 },
+        { q: "كم مرة جلد بولس من اليهود أربعين إلا واحداً؟", options: ["مرة واحدة", "ثلاث مرات", "خمس مرات", "سبع مرات"], correct: 2 },
+        { q: "ذكر بولس أنه اختطف إلى... سواء في الجسد أو خارج الجسد؟", options: ["السماء الأولى", "السماء الثالثة (الفردوس)", "الجحيم", "جبل التجلي"], correct: 1 },
+        { q: "ماذا أعطي لبولس في الجسد لئلا يرتفع من فرط الإعلانات؟", options: ["مرض مزمن", "شوكة في الجسد", "سجن طويل", "فقر شديد"], correct: 1 },
+        { q: "كم مرة تضرع بولس إلى الرب من أجل الشوكة التي في جسده؟", options: ["مرة", "مرتين", "ثلاث مرات", "عشر مرات"], correct: 2 },
+        { q: "قال الرب لبولس: تكفيك... لأن قوتي في الضعف تكمل؟", options: ["محبتي", "نعمتي", "حكمتي", "قوتي"], correct: 1 },
+        { q: "جربوا أنفسكم هل أنتم في...؟ اختبروا أنفسكم؟", options: ["الإيمان", "الخدمة", "النعمة", "المحبة"], correct: 0 },
+        { q: "نعمة ربنا يسوع المسيح، ومحبة الله، وشركة... مع جميعكم؟", options: ["القديسين", "الروح القدس", "الملائكة", "الرسل"], correct: 1 }
     ];
 
-    let current = 0, answers = new Array(questions.length).fill(null), skipped = new Set(), timeLeft = 25 * 60, timer;
+    let current = 0, answers = new Array(questions.length).fill(null), timeLeft = 25 * 60, timer;
     let userData = {};
 
     function startQuiz() {
         const nameInput = document.getElementById('u-name').value.trim();
         if (nameInput === "adminreset") {
-            localStorage.removeItem('quiz_completed_1co');
+            localStorage.removeItem('quiz_completed_2co');
             alert("تم مسح الحظر بنجاح.");
             location.reload();
             return;
         }
 
-        if (localStorage.getItem('quiz_completed_1co')) {
+        if (localStorage.getItem('quiz_completed_2co')) {
             switchScreen('block-screen');
             return;
         }
@@ -259,12 +236,12 @@
 
     function finishQuiz() {
         clearInterval(timer);
-        localStorage.setItem('quiz_completed_1co', 'true');
+        localStorage.setItem('quiz_completed_2co', 'true');
 
         let score = 0;
         questions.forEach((q, i) => { if(answers[i] === q.correct) score++; });
         
-        document.getElementById('final-score').innerText = `${score}/50`;
+        document.getElementById('final-score').innerText = `${score}/${questions.length}`;
         switchScreen('finish-screen');
         document.getElementById('timer-box').style.display = 'none';
         
@@ -276,7 +253,7 @@
         const status = document.getElementById('status-msg');
         status.innerText = "جاري إرسال النتيجة للسجل...";
 
-        const data = { ...userData, score: score, timestamp: new Date().toLocaleString('ar-EG') };
+        const data = { ...userData, quizName: "2 Corinthians", score: score, timestamp: new Date().toLocaleString('ar-EG') };
 
         try {
             await fetch(SCRIPT_URL, {
@@ -285,12 +262,10 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             });
-            status.innerText = "تم حفظ النتائج بنجاح ✅";
+            status.innerText = "تم حفظ النتائج في الإكسيل بنجاح ✅";
             status.style.color = "var(--success)";
-            status.style.fontWeight = "bold";
         } catch (error) {
-            status.innerText = "حدث خطأ في الاتصال، لكن نتيجتك مسجلة محلياً.";
-            status.style.color = "var(--danger)";
+            status.innerText = "تمت محاولة الحفظ.. نتيجتك مسجلة محلياً.";
         }
     }
 
